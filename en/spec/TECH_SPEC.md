@@ -1,51 +1,51 @@
-# 技術規格文件（全局）
+# Tech Spec (Global)
 
-> 此文件定義專案的技術選型與預設規範。
-> 所有功能 spec 預設繼承此設定，**無需重複填寫**。
-> 若特定功能有例外，在該功能的 spec 內標注「覆蓋全局設定」即可。
+> This document defines the project's technology choices and default conventions.
+> All feature specs inherit these settings by default — **no need to repeat them**.
+> If a specific feature overrides any global setting, note it as "Override global setting" in that feature's spec.
 
 ---
 
-## 1. 技術選型
+## 1. Tech Stack
 
-| 項目 | 選擇 | 版本 |
-|------|------|------|
-| 框架 | Vue 3 | 3.x |
-| 語言 | JavaScript | — |
-| 樣式方案 | SCSS | — |
+| Item | Choice | Version |
+|------|--------|---------|
+| Framework | Vue 3 | 3.x |
+| Language | JavaScript | — |
+| Styling | SCSS | — |
 | UI Library | Vuetify | 3.x |
-| 狀態管理 | Pinia | — |
-| 表單處理 | vee-validate | — |
+| State Management | Pinia | — |
+| Form Handling | vee-validate | — |
 | HTTP Client | Axios | — |
-| 套件管理 | pnpm | — |
-| 開發伺服器 / 打包工具 | **Vite** | 5.x |
-| 路由 | Vue Router | 4.x |
+| Package Manager | pnpm | — |
+| Dev Server / Bundler | **Vite** | 5.x |
+| Routing | Vue Router | 4.x |
 
 ---
 
-## 2. 啟動專案
+## 2. Running the Project
 
 ```bash
-# 安裝依賴
+# Install dependencies
 pnpm install
 
-# 開發模式啟動（必須使用 Vite）
+# Start dev server (must use Vite)
 pnpm dev
-# 等同於 vite --mode development
+# Equivalent to: vite --mode development
 
-# 打包
+# Build for production
 pnpm build
-# 等同於 vite build
+# Equivalent to: vite build
 
-# 預覽打包結果
+# Preview production build
 pnpm preview
-# 等同於 vite preview
+# Equivalent to: vite preview
 ```
 
-> ⚠️ **禁止使用其他方式啟動**（例如 `node server.js`、`webpack serve` 等）。
-> 一律透過 Vite 開發伺服器，確保 HMR、`import.meta.env` 及 path alias 正常運作。
+> ⚠️ **Do not start the project any other way** (e.g. `node server.js`, `webpack serve`, etc.).
+> Always use the Vite dev server to ensure HMR, `import.meta.env`, and path aliases work correctly.
 
-### vite.config.js 基本設定
+### 2.1 vite.config.js Base Config
 
 ```javascript
 import { defineConfig } from 'vite'
@@ -60,8 +60,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,       // 預設 port
-    open: true,       // 啟動後自動開啟瀏覽器
+    port: 5173,       // default port
+    open: true,       // auto-open browser on start
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL,
@@ -72,11 +72,11 @@ export default defineConfig({
 })
 ```
 
-### HTTPS 設定
+### 2.2 HTTPS Configuration
 
-#### 開發環境（Vite dev server）
+#### Development (Vite dev server)
 
-使用 `@vitejs/plugin-basic-ssl` 快速啟用自簽憑證：
+Use `@vitejs/plugin-basic-ssl` for a quick self-signed certificate:
 
 ```bash
 pnpm add -D @vitejs/plugin-basic-ssl
@@ -89,27 +89,27 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 export default defineConfig({
   plugins: [
     vue(),
-    basicSsl(),   // 自動產生自簽憑證，dev server 改為 https://
+    basicSsl(),   // auto-generates a self-signed cert, dev server switches to https://
   ],
   server: {
     port: 5173,
-    https: true,  // 搭配 basicSsl plugin 使用
+    https: true,  // used together with the basicSsl plugin
     open: true,
   },
 })
 ```
 
-> ⚠️ 自簽憑證瀏覽器會顯示警告，點「進階 → 繼續前往」即可。
-> 僅限開發使用，**不可用於 production**。
+> ⚠️ The browser will show a warning for self-signed certificates — click "Advanced → Proceed" to continue.
+> For development only. **Never use in production.**
 
-如果需要讓區網其他裝置也能 HTTPS 存取（例如手機測試），改用 mkcert 產生本機信任憑證：
+If you need HTTPS access from other devices on the local network (e.g. mobile testing), use mkcert to generate a locally-trusted certificate instead:
 
 ```bash
 # macOS
 brew install mkcert
 mkcert -install
 mkcert localhost 127.0.0.1
-# 產生 localhost+1.pem 和 localhost+1-key.pem
+# Generates localhost+1.pem and localhost+1-key.pem
 ```
 
 ```javascript
@@ -122,22 +122,22 @@ export default defineConfig({
       cert: fs.readFileSync('./localhost+1.pem'),
       key:  fs.readFileSync('./localhost+1-key.pem'),
     },
-    host: true,   // 對外開放，讓區網裝置可連
+    host: true,   // expose to local network
   },
 })
 ```
 
-> ⚠️ 憑證檔案（`*.pem`）加入 `.gitignore`，不要 commit 進 repo。
+> ⚠️ Add certificate files (`*.pem`) to `.gitignore` — do not commit them to the repo.
 
-#### 正式環境（Production）
+#### Production
 
-Production 的 HTTPS 不由 Vite 處理，**一律在反向代理層終止 TLS**：
+HTTPS in production is **not handled by Vite**. TLS should always be terminated at the reverse proxy layer:
 
 ```
-使用者 → HTTPS → Nginx / Caddy（TLS 終止）→ HTTP → Vite preview / Node server
+Client → HTTPS → Nginx / Caddy (TLS termination) → HTTP → Vite preview / Node server
 ```
 
-**Nginx 範例**：
+**Nginx example**:
 
 ```nginx
 server {
@@ -148,13 +148,13 @@ server {
   ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
   location / {
-    proxy_pass http://127.0.0.1:4173;   # vite preview 預設 port
+    proxy_pass http://127.0.0.1:4173;   # default vite preview port
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
   }
 }
 
-# 強制 HTTP → HTTPS
+# Force HTTP → HTTPS
 server {
   listen 80;
   server_name example.com;
@@ -162,7 +162,7 @@ server {
 }
 ```
 
-**Caddy 範例**（自動申請 Let's Encrypt，設定最簡單）：
+**Caddy example** (auto-provisions Let's Encrypt — simplest setup):
 
 ```
 # Caddyfile
@@ -171,21 +171,21 @@ example.com {
 }
 ```
 
-> 憑證申請推薦使用 **Let's Encrypt**（免費），搭配 Certbot 或 Caddy 自動續約。
+> Recommended: use **Let's Encrypt** (free) with Certbot or Caddy for automatic certificate renewal.
 
 ---
 
-## 2.5 組件自動引入（Auto Import）
+## 3. Component Auto Import
 
-使用 `unplugin-vue-components` 讓 `src/components/` 下的所有元件**自動按需引入**，無需在每個 SFC 手動 import。
+Use `unplugin-vue-components` so every component under `src/components/` is **automatically imported on demand** — no manual imports needed in any SFC.
 
-### 安裝
+### 3.1 Installation
 
 ```bash
 pnpm add -D unplugin-vue-components
 ```
 
-### vite.config.js 設定
+### 3.2 vite.config.js Setup
 
 ```javascript
 import { defineConfig } from 'vite'
@@ -198,38 +198,38 @@ export default defineConfig({
   plugins: [
     vue(),
     Components({
-      // 自動掃描的資料夾（預設已包含 src/components）
+      // Folders to scan (src/components is included by default)
       dirs: ['src/components'],
 
-      // 副檔名
+      // File extensions to include
       extensions: ['vue'],
 
-      // 自動產生 TypeScript 型別宣告檔
+      // Auto-generate TypeScript declaration file
       dts: 'src/components.d.ts',
 
-      // Vuetify 元件同步自動引入（v-btn、v-text-field 等不需要 import）
+      // Also auto-import Vuetify components (v-btn, v-text-field, etc.)
       resolvers: [VuetifyResolver()],
     }),
   ],
-  // ... 其餘設定
+  // ... rest of config
 })
 ```
 
-### 效果
+### 3.3 Result
 
-設定完成後，`src/components/` 下的所有元件直接在 template 使用，**不需要 import 也不需要 components 註冊**：
+Once configured, every component under `src/components/` can be used directly in templates — **no import statement, no components registration required**:
 
 ```vue
-<!-- ✅ 之前：每個頁面都要手動 import -->
+<!-- ✅ Before: manual imports on every page -->
 <script setup>
-import AppInput      from '@/components/base/AppInput.vue'
-import AppSelect     from '@/components/base/AppSelect.vue'
-import AppForm       from '@/components/base/AppForm.vue'
+import AppInput  from '@/components/base/AppInput.vue'
+import AppSelect from '@/components/base/AppSelect.vue'
+import AppForm   from '@/components/base/AppForm.vue'
 </script>
 
-<!-- ✅ 之後：直接用，plugin 自動處理 -->
+<!-- ✅ After: use directly, the plugin handles it -->
 <script setup>
-// 不需要任何 import
+// no imports needed
 </script>
 
 <template>
@@ -237,24 +237,24 @@ import AppForm       from '@/components/base/AppForm.vue'
     <template #default="{ isSubmitting }">
       <AppInput  name="email" label="Email" rules="required|email" />
       <AppSelect name="role"  label="Role"  rules="required" :items="roles" />
-      <v-btn type="submit" :loading="isSubmitting">送出</v-btn>
+      <v-btn type="submit" :loading="isSubmitting">Submit</v-btn>
     </template>
   </AppForm>
 </template>
 ```
 
-### 注意事項
+### 3.4 Notes
 
-- 自動引入是**按需（on-demand）**的，不會把所有元件打包進 bundle，不影響 tree-shaking
-- 元件檔名即為使用名稱（PascalCase），例如 `AppInput.vue` → `<AppInput />`
-- 若有子資料夾（如 `base/AppInput.vue`），元件名稱仍為 `AppInput`（不含資料夾名）
-- 新增元件後 dev server 會自動更新 `components.d.ts`，不需重啟
-- `components.d.ts` 加入 `.gitignore` 或 commit 皆可，建議 commit 以確保 CI 型別正確
+- Auto import is **on-demand** — unused components are never bundled, tree-shaking is preserved
+- Component filename = component tag name (PascalCase): `AppInput.vue` → `<AppInput />`
+- Components in subdirectories (e.g. `base/AppInput.vue`) are registered by filename only — `<AppInput />`, not `<BaseAppInput />`
+- Adding a new component auto-updates `components.d.ts` without restarting the dev server
+- Committing `components.d.ts` is recommended to keep CI type-checking accurate
 
-### .gitignore 建議
+### 3.5 .gitignore Note
 
 ```
-# 自動產生，可選擇 commit 或忽略
+# Auto-generated — commit or ignore, your choice
 # src/components.d.ts
 ```
 
@@ -262,9 +262,9 @@ import AppForm       from '@/components/base/AppForm.vue'
 
 ---
 
-## 3. Vue Router 規範
+## 4. Vue Router Conventions
 
-### 3.1 基本設定
+### 4.1 Basic Setup
 
 ```javascript
 // router/index.js
@@ -306,31 +306,31 @@ const router = createRouter({
 export default router
 ```
 
-### 3.2 命名規範
+### 4.2 Naming Conventions
 
-| 對象 | 規則 | 範例 |
-|------|------|------|
+| Target | Rule | Example |
+|--------|------|---------|
 | Route `name` | PascalCase | `'CheckoutConfirm'` |
 | Route `path` | kebab-case | `'/order-complete'` |
-| View 元件檔名 | PascalCase + `View` 後綴 | `CheckoutView.vue` |
+| View component filename | PascalCase + `View` suffix | `CheckoutView.vue` |
 
-### 3.3 導航方式
+### 4.3 Navigation
 
 ```javascript
-// ✅ 一律用 name 導航，不寫死 path 字串
+// ✅ Always navigate by name — never hardcode path strings
 const router = useRouter()
 router.push({ name: 'Checkout' })
 router.push({ name: 'OrderDetail', params: { id: '123' } })
 router.push({ name: 'Search', query: { keyword: 'hello' } })
 
-// ❌ 避免
+// ❌ Avoid
 router.push('/checkout')
 ```
 
-### 3.4 Route Meta 與 Navigation Guard
+### 4.4 Route Meta & Navigation Guards
 
 ```javascript
-// router/index.js — 全局前置守衛
+// router/index.js — global beforeEach guard
 router.beforeEach((to, from) => {
   const authStore = useAuthStore()
 
@@ -339,74 +339,87 @@ router.beforeEach((to, from) => {
   }
 })
 
-// meta 欄位定義（在 route 設定內使用）
-// requiresAuth: true     → 需要登入
-// layout: 'blank'        → 使用空白 layout（不含導覽列）
-// title: '頁面標題'       → 用於更新 document.title
+// Available meta fields (set per route)
+// requiresAuth: true   → requires authentication
+// layout: 'blank'      → use blank layout (no navbar)
+// title: 'Page Title'  → used to update document.title
 ```
 
-### 3.5 Lazy Loading
+### 4.5 Lazy Loading
 
 ```javascript
-// ✅ 所有 view 元件一律 lazy load（動態 import）
+// ✅ All view components must use lazy loading (dynamic import)
 component: () => import('@/views/CheckoutView.vue')
 
-// ❌ 避免直接 import（會打包進主 bundle）
+// ❌ Avoid static imports (gets bundled into the main chunk)
 import CheckoutView from '@/views/CheckoutView.vue'
 ```
 
 ---
 
-## 4. 專案結構規範
+## 5. Project Structure
 
 ```
 src/
-├── assets/               # 靜態資源（圖片、全局 SCSS）
+├── assets/                   # Static assets (images, global SCSS)
 │   └── styles/
-│       ├── _variables.scss   # SCSS 變數
+│       ├── _variables.scss   # SCSS variables
 │       ├── _mixins.scss      # SCSS mixins
-│       └── main.scss         # 全局樣式入口
+│       └── main.scss         # Global styles entry point
 ├── components/
-│   ├── base/             # 基礎 UI 元件（封裝 Vuetify）
-│   └── [feature]/        # 功能型元件，依功能分資料夾
-├── composables/          # 可複用的 Composition API 邏輯
-├── lib/                  # 工具函數、API client 設定
-│   └── api/              # 各資源 API 模組
-├── router/               # Vue Router 設定
-├── stores/               # Pinia stores
-├── views/                # 頁面層級元件（對應路由）
-└── docs/                 # spec 文件放這裡
-    ├── TECH_SPEC.md      # 本文件
-    └── spec-[feature].md # 各功能規格
+│   ├── base/                 # Base UI components (wrapping Vuetify)
+│   └── [feature]/            # Feature components, grouped by feature
+├── composables/              # Reusable Composition API logic
+├── lib/                      # Low-level utilities (no business logic)
+│   ├── axios.js              # Axios instance + interceptors
+│   └── api/                  # HTTP layer: pure API calls
+│       ├── cart.js
+│       ├── product.js
+│       └── order.js
+├── services/                 # Business logic: API composition, data transformation, decisions
+│   ├── cartService.js
+│   ├── orderService.js
+│   └── authService.js
+├── stores/                   # Pinia stores: state management
+│   ├── cartStore.js
+│   └── orderStore.js
+├── router/                   # Vue Router config
+├── plugins/                  # Vue plugin setup (vuetify, veeValidate, etc.)
+│   ├── vuetify.js
+│   └── veeValidate.js
+├── views/                    # Page-level components (mapped to routes)
+└── docs/                     # Spec documents
+    ├── TECH_SPEC.md          # This file
+    └── spec-[feature].md     # Per-feature specs
 ```
 
 ---
 
-## 3. 命名規範
+## 6. Naming Conventions
 
-| 對象 | 規則 | 範例 |
-|------|------|------|
-| 元件檔案 | PascalCase | `CheckoutForm.vue` |
-| Composable 檔案 | camelCase，前綴 `use` | `useCartData.js` |
-| 工具函數 | camelCase | `formatPrice.js` |
-| SCSS 檔案 | kebab-case，partial 加 `_` 前綴 | `_card-styles.scss` |
-| SCSS class | BEM / kebab-case | `.cart-summary__item` |
-| 常數 | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| Pinia Store 檔案 | camelCase | `cartStore.js` |
-| Pinia Store ID | camelCase | `useCartStore` |
+| Target | Rule | Example |
+|--------|------|---------|
+| Component files | PascalCase | `CheckoutForm.vue` |
+| Composable files | camelCase, prefixed with `use` | `useCartData.js` |
+| Utility functions | camelCase | `formatPrice.js` |
+| SCSS files | kebab-case, partials prefixed with `_` | `_card-styles.scss` |
+| SCSS classes | BEM / kebab-case | `.cart-summary__item` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
+| Pinia store files | camelCase | `cartStore.js` |
+| Pinia store ID | camelCase | `useCartStore` |
 
 ---
 
-## 4. 元件預設規範
+## 7. Component Conventions
 
 ```vue
-<!-- ✅ 標準 SFC 結構，一律使用 <script setup> -->
+<!-- ✅ Standard SFC structure — always use <script setup> -->
 <script setup>
-// 1. import
-// 2. props / emits 定義
-// 3. store / composables
-// 4. 響應式資料（ref / reactive / computed）
-// 5. 方法
+// 1. imports
+// 2. props / emits
+// 3. stores / composables
+// 4. reactive data (ref / reactive / computed)
+// 5. methods
 // 6. lifecycle hooks
 
 const props = defineProps({
@@ -420,23 +433,37 @@ const emit = defineEmits(['update', 'delete'])
 </script>
 
 <template>
-  <!-- 根元素只有一個 -->
+  <!-- Single root element -->
 </template>
 
 <style lang="scss" scoped>
-// 元件私有樣式，預設 scoped
+// Component-scoped styles
 </style>
 
-// ✅ 一律使用 <script setup> 語法
-// ✅ 超過 200 行考慮拆子元件
-// ✅ 樣式預設 scoped，全局樣式放 assets/styles/
+// ✅ Always use <script setup> syntax
+// ✅ Consider splitting into sub-components if over 200 lines
+// ✅ Styles are scoped by default; global styles go in assets/styles/
 ```
 
 ---
 
-## 5. API 請求規範
+## 8. API Conventions
 
-### 5.1 Axios 設定
+Three layers with clear responsibilities:
+
+```
+Component / Pinia Store
+        ↓
+src/services/        ← Business logic (data composition, transformation, decisions)
+        ↓
+src/lib/api/         ← HTTP layer (pure API calls, no business logic)
+        ↓
+src/lib/axios.js     ← Axios config (interceptors, base URL)
+```
+
+---
+
+### 8.1 Axios Setup
 
 ```javascript
 // lib/axios.js
@@ -448,19 +475,19 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request 攔截器：自動帶入 token
+// Request interceptor: auto-attach token
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Response 攔截器：統一處理 401 / 500
+// Response interceptor: handle 401 / 500 globally
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 導向登入頁
+      // redirect to login
     }
     return Promise.reject(error)
   }
@@ -469,36 +496,178 @@ apiClient.interceptors.response.use(
 export default apiClient
 ```
 
-### 5.2 API 模組化
+---
+
+### 8.2 API Layer (`src/lib/api/`)
+
+**Responsibility: pure HTTP calls mapping to backend endpoints. No business logic.**
 
 ```javascript
-// lib/api/cart.js — 每個資源一個檔案
+// lib/api/cart.js
 import apiClient from '@/lib/axios'
 
 export const cartApi = {
-  getCart: () => apiClient.get('/cart'),
-  updateItem: (itemId, payload) => apiClient.put(`/cart/items/${itemId}`, payload),
-  deleteItem: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
+  getCart:     ()               => apiClient.get('/cart'),
+  addItem:     (payload)        => apiClient.post('/cart/items', payload),
+  updateItem:  (itemId, payload)=> apiClient.put(`/cart/items/${itemId}`, payload),
+  deleteItem:  (itemId)         => apiClient.delete(`/cart/items/${itemId}`),
+  applyCoupon: (code)           => apiClient.post('/cart/coupon', { code }),
 }
 ```
 
-### 5.3 錯誤格式
-
 ```javascript
-// 統一錯誤格式（後端約定）
-// {
-//   code: 'CART_NOT_FOUND',   // 業務錯誤碼
-//   message: '購物車不存在',   // 使用者可讀訊息
-//   details: ...              // 選填
-// }
+// lib/api/product.js
+import apiClient from '@/lib/axios'
 
-// 全局攔截器處理 401 / 500
-// 個別元件只需處理業務邏輯錯誤（顯示 message）
+export const productApi = {
+  getList:  (params) => apiClient.get('/products', { params }),
+  getById:  (id)     => apiClient.get(`/products/${id}`),
+  getStock: (id)     => apiClient.get(`/products/${id}/stock`),
+}
 ```
 
 ---
 
-## 6. Pinia Store 規範
+### 8.3 Service Layer (`src/services/`)
+
+**Responsibility: business logic, data composition, transformation, and decisions. Calls one or more API modules and returns data that components/stores can use directly.**
+
+Rules:
+- One service file per business domain (`cart`, `order`, `auth`, etc.)
+- Only call `lib/api/` modules inside services — never use `apiClient` directly
+- Components and stores only call services, **never the API layer directly**
+- Services `throw` errors; stores catch them in `try/catch`
+
+```javascript
+// services/cartService.js
+import { cartApi }    from '@/lib/api/cart'
+import { productApi } from '@/lib/api/product'
+
+export const cartService = {
+
+  // Fetch cart and enrich each item with live stock status (combines two APIs)
+  async getCartWithStock() {
+    const { data: cart } = await cartApi.getCart()
+
+    const stockResults = await Promise.all(
+      cart.items.map(item => productApi.getStock(item.productId))
+    )
+
+    return {
+      ...cart,
+      items: cart.items.map((item, i) => ({
+        ...item,
+        inStock: stockResults[i].data.quantity > 0,
+      })),
+    }
+  },
+
+  // Check stock before adding to cart; throw a business error if insufficient
+  async addItem(productId, quantity) {
+    const { data: stock } = await productApi.getStock(productId)
+
+    if (stock.quantity < quantity) {
+      throw new Error('Not enough stock to add this item to the cart')
+    }
+
+    return cartApi.addItem({ productId, quantity })
+  },
+
+  // Apply a coupon and return a formatted discount summary
+  async applyCoupon(code) {
+    const { data } = await cartApi.applyCoupon(code)
+    return {
+      discountRate:   data.discount_rate,
+      discountAmount: data.original_total * data.discount_rate,
+      finalTotal:     data.final_total,
+    }
+  },
+}
+```
+
+---
+
+### 8.4 Store Calls Service
+
+Stores handle state only — all business logic is delegated to services:
+
+```javascript
+// stores/cartStore.js
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { cartService } from '@/services/cartService'
+
+export const useCartStore = defineStore('cart', () => {
+  const items     = ref([])
+  const isLoading = ref(false)
+  const error     = ref(null)
+
+  const totalPrice = computed(() =>
+    items.value.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  )
+
+  async function fetchCart() {
+    isLoading.value = true
+    error.value = null
+    try {
+      const cart = await cartService.getCartWithStock()  // ← call service, not API
+      items.value = cart.items
+    } catch (err) {
+      error.value = err.message ?? 'Failed to load cart'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function addItem(productId, quantity) {
+    isLoading.value = true
+    error.value = null
+    try {
+      await cartService.addItem(productId, quantity)     // ← stock check is inside service
+      await fetchCart()
+    } catch (err) {
+      error.value = err.message ?? 'Failed to add item'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return { items, isLoading, error, totalPrice, fetchCart, addItem }
+})
+```
+
+---
+
+### 8.5 Error Format
+
+```javascript
+// Agreed error shape from the backend:
+// {
+//   code: 'CART_NOT_FOUND',     // business error code
+//   message: 'Cart not found',  // user-readable message
+//   details: ...                // optional
+// }
+
+// Global interceptors → handle 401 / 500
+// Service layer       → handle business logic errors, throw to store
+// Store               → catch and write to error state
+// Component           → display store.error, never handles API errors directly
+```
+
+---
+
+### 8.6 Layer Responsibilities
+
+| Layer | Path | Responsibility | Can call |
+|-------|------|----------------|----------|
+| HTTP | `lib/api/` | Pure API calls, maps to endpoints | `lib/axios.js` |
+| Service | `services/` | Business logic, data composition & transformation | `lib/api/` |
+| Store | `stores/` | State management, triggers services | `services/` |
+| Component | `components/` `views/` | UI rendering | `stores/` `composables/` |
+
+> ⚠️ **No cross-layer calls**: components must not call `lib/api/` directly; stores must not call `lib/api/` directly; services must not import stores.
+
+## 9. Pinia Store Conventions
 
 ```javascript
 // stores/cartStore.js
@@ -525,7 +694,7 @@ export const useCartStore = defineStore('cart', () => {
       const { data } = await cartApi.getCart()
       items.value = data.items
     } catch (err) {
-      error.value = err.response?.data?.message ?? '載入失敗'
+      error.value = err.response?.data?.message ?? 'Failed to load'
     } finally {
       isLoading.value = false
     }
@@ -534,24 +703,25 @@ export const useCartStore = defineStore('cart', () => {
   return { items, isLoading, error, totalPrice, fetchCart }
 })
 
-// ✅ 使用 Setup Store 語法（比 Options Store 更靈活）
-// ✅ isLoading / error 每個 store 標配
-// ✅ actions 內統一 try/catch，錯誤存進 error state
+// ✅ Use Setup Store syntax (more flexible than Options Store)
+// ✅ isLoading and error are required in every store
+// ✅ Always use try/catch in actions; store errors in error state
 ```
 
 ---
 
-## 8. 表單驗證規範
+## 10. Form Validation Conventions
 
-> 表單驗證規範已獨立為專屬文件，請參閱 `docs/spec-form-validation.md`。
-> 涵蓋：統一 rules 管理（`src/plugins/veeValidate.js`）、各元件用法（Input、Textarea、Radio、Checkbox、Select、Autocomplete、File Upload）。
+> Form validation conventions have been extracted into a dedicated spec.
+> See `docs/spec-form-validation.md` for the full reference.
+> Covers: centralized rules management (`src/plugins/veeValidate.js`) and usage for all form components (Input, Textarea, Radio, Checkbox, Select, Autocomplete, File Upload).
 
 ---
 
-## 9. 樣式規範
+## 11. Styling Conventions
 
 ```scss
-// assets/styles/_variables.scss — 統一定義設計 token
+// assets/styles/_variables.scss — centralized design tokens
 $color-primary: #1976D2;
 $color-error:   #D32F2F;
 $spacing-base:  8px;
@@ -588,31 +758,31 @@ $spacing-base:  8px;
 }
 </style>
 
-// ✅ 顏色、間距使用 SCSS 變數，不寫死 hex
-// ✅ 元件樣式預設 scoped
-// ✅ 全局 / reset 樣式放 assets/styles/main.scss
-// ✅ Vuetify 主題色在 plugins/vuetify.js 統一設定
+// ✅ Use SCSS variables for colors and spacing — no hardcoded hex values
+// ✅ Component styles are scoped by default
+// ✅ Global / reset styles go in assets/styles/main.scss
+// ✅ Vuetify theme colors are configured in plugins/vuetify.js
 ```
 
 ---
 
-## 10. 預設 States 處理方式
+## 12. Default State Handling
 
-所有需要非同步資料的元件，預設要處理以下 states：
+All components that fetch async data must handle these states:
 
-| State | 處理方式 |
-|-------|---------|
-| `isLoading` | `<v-skeleton-loader>` 或 `<v-progress-circular>`，版面與實際內容等高 |
-| `error` | 顯示錯誤訊息 + 重試按鈕 |
-| `empty` | 空狀態插圖 + 引導操作文字 |
-| 正常 | 渲染實際內容 |
+| State | Behavior |
+|-------|----------|
+| `isLoading` | Show `<v-skeleton-loader>` or `<v-progress-circular>`, matching the height of the actual content |
+| `error` | Show error message + retry button |
+| `empty` | Show empty state illustration + call-to-action text |
+| success | Render actual content |
 
 ```vue
 <template>
   <v-skeleton-loader v-if="store.isLoading" type="card" />
 
   <v-alert v-else-if="store.error" type="error" :text="store.error">
-    <v-btn variant="text" @click="store.fetchData()">重試</v-btn>
+    <v-btn variant="text" @click="store.fetchData()">Retry</v-btn>
   </v-alert>
 
   <EmptyState v-else-if="!store.items.length" />
@@ -623,10 +793,10 @@ $spacing-base:  8px;
 
 ---
 
-## 11. Toast / 通知規範
+## 13. Toast / Notification Conventions
 
 ```javascript
-// composables/useToast.js — 全局共用
+// composables/useToast.js — shared globally
 import { ref } from 'vue'
 
 const snackbar = ref({ show: false, message: '', color: 'success' })
@@ -643,45 +813,45 @@ export function useToast() {
   }
 }
 
-// 在 App.vue 掛載 <v-snackbar> 監聽 snackbar state
-// 規則：
-// ✅ 成功操作 → success toast
-// ✅ 使用者驗證錯誤 → 表單 inline error-messages，不用 toast
-// ✅ 系統錯誤（API 失敗）→ error toast
+// Mount <v-snackbar> in App.vue listening to snackbar state
+// Rules:
+// ✅ Successful action → success toast
+// ✅ User validation error → inline form error-messages, not toast
+// ✅ System error (API failure) → error toast
 ```
 
 ---
 
-## 12. Responsive 預設斷點
+## 14. Default Responsive Breakpoints
 
-對齊 Vuetify 預設斷點：
+Aligned with Vuetify's default breakpoints:
 
-| 裝置 | 斷點 | 設計稿寬度 |
-|------|------|-----------|
+| Device | Breakpoint | Design width |
+|--------|------------|--------------|
 | Mobile | `< 600px` | 375px |
 | Tablet | `600px ~ 959px` | 768px |
 | Desktop | `≥ 960px` | 1440px |
 
 ```vue
-<!-- ✅ 優先使用 Vuetify Grid System -->
+<!-- ✅ Prefer Vuetify Grid System -->
 <v-row>
-  <v-col cols="12" md="8">主內容</v-col>
-  <v-col cols="12" md="4">側欄</v-col>
+  <v-col cols="12" md="8">Main content</v-col>
+  <v-col cols="12" md="4">Sidebar</v-col>
 </v-row>
 
-<!-- ✅ 需要自訂時，用 SCSS mixin respond-to() -->
+<!-- ✅ For custom needs, use the SCSS respond-to() mixin -->
 ```
 
-> 開發優先順序：Mobile First
+> Development priority: **Mobile First**
 
 ---
 
-## 13. 環境變數
+## 15. Environment Variables
 
 ```bash
-# .env.local 範例（Vite 專案）
+# .env.local example (Vite project)
 VITE_API_URL=https://api.example.com
 VITE_APP_ENV=development
 ```
 
-> Vite 環境變數需加 `VITE_` 前綴才能在客戶端存取（`import.meta.env.VITE_API_URL`）。
+> Vite environment variables must be prefixed with `VITE_` to be accessible on the client side via `import.meta.env.VITE_API_URL`.
